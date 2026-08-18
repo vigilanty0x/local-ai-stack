@@ -49,7 +49,8 @@ jobs:
       - name: Verify installed metadata and version
         run: python -c "import importlib.metadata as m, local_ai_stack; assert m.version('local-ai-stack') == local_ai_stack.__version__ == '0.2.0'"
       - name: Positive, failed, and blocked evidence contract
-        run: python -c "import json,tempfile,subprocess,sys; from pathlib import Path; d=Path(tempfile.mkdtemp()); cases=[('good',{'runtime':'ollama','model':'small','status':'ready'},0,'passed'),('bad',{'runtime':'ollama','model':'small','status':'degraded'},2,'failed'),('blocked',{'runtime':'ollama','status':'ready'},2,'blocked')]; [(lambda p,expected,status: (p.write_text(json.dumps(value),encoding='utf-8'), (lambda r: (_ for _ in ()).throw(AssertionError((name,r.returncode,r.stdout,r.stderr))) if r.returncode!=expected or json.loads(r.stdout)['status']!=status else None)(subprocess.run([sys.executable,'-m','local_ai_stack.cli',str(p)],capture_output=True,text=True)) ))(d/f'{name}.json',code,state) for name,value,code,state in cases]"
+        run: |
+          python -c "import json,tempfile,subprocess,sys; from pathlib import Path; d=Path(tempfile.mkdtemp()); cases=[('good',{'runtime':'ollama','model':'small','status':'ready'},0,'passed'),('bad',{'runtime':'ollama','model':'small','status':'degraded'},2,'failed'),('blocked',{'runtime':'ollama','status':'ready'},2,'blocked')]; [(lambda p,expected,status: (p.write_text(json.dumps(value),encoding='utf-8'), (lambda r: (_ for _ in ()).throw(AssertionError((name,r.returncode,r.stdout,r.stderr))) if r.returncode!=expected or json.loads(r.stdout)['status']!=status else None)(subprocess.run([sys.executable,'-m','local_ai_stack.cli',str(p)],capture_output=True,text=True))))(d/f'{name}.json',code,state) for name,value,code,state in cases]"
       - name: Smoke installed CLI outside checkout
         working-directory: ${{ runner.temp }}
         run: local-ai-stack --version
