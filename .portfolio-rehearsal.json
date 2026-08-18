@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "target": "local-ai-stack",
+  "base": "local-ai-stack",
+  "baseHeadSha": "f7f18c5eb0025c6486158d830a26947c14c649eb",
+  "sources": [
+    {
+      "repository": "ollama-fleet-manager",
+      "prefix": "packages/ollama-fleet-manager",
+      "headSha": "c93bf42cf7da971a38733c6c8211adf30095d136",
+      "treeSha": "e3e2037efa31e8e76e748fef39aee3db929b8a80",
+      "ancestor": true,
+      "treeMatch": true
+    },
+    {
+      "repository": "local-model-benchmark",
+      "prefix": "packages/local-model-benchmark",
+      "headSha": "1e5ab13d37a794f8f756eb5760871ff8f2f3806d",
+      "treeSha": "8866c6cb9ec2e9b3ceebb24a644cb80f11097150",
+      "ancestor": true,
+      "treeMatch": true
+    },
+    {
+      "repository": "model-fallback-proxy",
+      "prefix": "packages/model-fallback-proxy",
+      "headSha": "fa2ff3df8088efebcb53a9e23780800fe3735cf0",
+      "treeSha": "66f2111c278973fa3ac94c164c90d7ba08c436e2",
+      "ancestor": true,
+      "treeMatch": true
+    }
+  ],
+  "state": "REHEARSAL_ONLY",
+  "archiveGate": "BLOCKED",
+  "reason": "Tests, compatibility, release, redirect, consumer, rollback, and human gates are not all verified."
+}

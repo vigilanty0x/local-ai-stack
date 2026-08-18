@@ -1,16 +1,11 @@
 from __future__ import annotations
-
 import argparse
 import json
 from pathlib import Path
-
-from . import __version__
 from .core import evaluate
 
-
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(prog="local-ai-stack")
-    parser.add_argument("--version", action="version", version=f"local-ai-stack {__version__}")
+    parser = argparse.ArgumentParser()
     parser.add_argument("record", type=Path)
     parser.add_argument("--output", type=Path)
     args = parser.parse_args(argv)
@@ -22,6 +17,6 @@ def main(argv: list[str] | None = None) -> int:
         print(rendered, end="")
     return 0 if result["status"] == "passed" else 2
 
-
 if __name__ == "__main__":
     raise SystemExit(main())
+

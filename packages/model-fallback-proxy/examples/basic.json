@@ -1,0 +1,21 @@
+{
+  "request": {
+    "context_tokens": 100,
+    "capabilities": [
+      "text"
+    ]
+  },
+  "models": [
+    {
+      "name": "model-a",
+      "order": 1,
+      "status": "healthy",
+      "remaining_requests": 5,
+      "context_limit": 4096,
+      "capabilities": [
+        "text"
+      ]
+    }
+  ]
+}
+
