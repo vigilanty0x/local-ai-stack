@@ -1,0 +1,11 @@
+include .github/workflows/ci.yml
+include CHANGELOG.md
+include LICENSE
+include MIGRATION-0.2.md
+include README.md
+include SECURITY.md
+include release-policy.v1.json
+include requirements-build.txt
+recursive-include docs *.md
+recursive-include scripts *.py
+recursive-include tests *.py
