@@ -3,6 +3,7 @@
   "target": "local-ai-stack",
   "base": "local-ai-stack",
   "baseHeadSha": "f7f18c5eb0025c6486158d830a26947c14c649eb",
+  "mergeCommitSha": "8d2aed4b57576e54744efb22d8335891c0d3b0f8",
   "sources": [
     {
       "repository": "ollama-fleet-manager",
@@ -29,7 +30,7 @@
       "treeMatch": true
     }
   ],
-  "state": "REHEARSAL_ONLY",
+  "state": "MERGED",
   "archiveGate": "BLOCKED",
-  "reason": "Tests, compatibility, release, redirect, consumer, rollback, and human gates are not all verified."
+  "reason": "The consolidation is already merged at mergeCommitSha. Publication, post-publication verification, consumer/redirect/rollback closure, and explicit human archive approval remain separate blocked gates."
 }
