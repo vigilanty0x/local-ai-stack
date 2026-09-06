@@ -3,6 +3,7 @@ import json
 from pathlib import Path
 import subprocess
 import sys
+import threading
 import time
 
 import pytest
@@ -105,21 +106,89 @@ def test_repeated_calls_hold_existing_native_lock_and_same_deadline(tmp_path):
         pass
 
 
-@pytest.mark.parametrize("case", ["wrong-model","truncated","malformed","terminal","timeout","framing"])
+@pytest.mark.parametrize("case", ["wrong-model","truncated","malformed","terminal","framing"])
 def test_real_http_uncertainty_stops_following_attempts(monkeypatch,tmp_path,case):
     def behavior(server,payload):
         if case == "wrong-model": server.respond(200,generated(model="other:1"))
         elif case == "truncated": server.respond(200,generated(),extra_length=5)
         elif case == "malformed": server.respond(200,None,raw=b'{')
         elif case == "terminal": server.respond(503,{"error":"private synthetic detail"})
-        elif case == "timeout": server.respond(200,generated(),delay=.4)
         else: server.respond(200,generated(),extra_headers=[("Transfer-Encoding","chunked")])
     with http_fixture(monkeypatch,behavior) as calls:
-        result = execute(tmp_path,timeout=.2 if case == "timeout" else 5)
+        result = execute(tmp_path,timeout=5)
     assert result["status"] in {"blocked","timeout"}
     assert len([c for c in calls if c[0] == "POST"]) == 1
     assert [a["status"] for a in result["attempts"]][1:] == ["not_attempted","not_attempted"]
     assert "private synthetic detail" not in json.dumps(result)
+
+
+def test_real_http_body_timeout_stops_following_attempts(monkeypatch,tmp_path):
+    # The deadline also includes inventory and the OS lock. Synchronize on the
+    # actual response body so startup scheduling cannot turn this into a test
+    # that accepts timing out before any inference request was made.
+    budget = 5.0
+    reading_body = threading.Event()
+    release_body = threading.Event()
+    handler_finished = threading.Event()
+    client_finished = threading.Event()
+    outcome = {}
+    expired_fixture = []
+    native_read = rt.http.client.HTTPResponse.read
+
+    def read(response,*args,**kwargs):
+        if response.status == 503:
+            reading_body.set()
+        return native_read(response,*args,**kwargs)
+
+    def behavior(server,payload):
+        body = json.dumps({"error":"private synthetic detail"}).encode()
+        server.send_response(503)
+        server.send_header("Content-Length",str(len(body)))
+        server.send_header("Connection","close")
+        server.end_headers()
+        server.wfile.flush()
+        try:
+            if not release_body.wait(budget + 4):
+                expired_fixture.append(True)
+            try:
+                server.wfile.write(body)
+                server.wfile.flush()
+            except (BrokenPipeError,ConnectionResetError):
+                pass
+        finally:
+            server.close_connection = True
+            handler_finished.set()
+
+    def client():
+        try:
+            outcome["result"] = execute(tmp_path,timeout=budget)
+        except BaseException as exc:
+            outcome["error"] = exc
+        finally:
+            client_finished.set()
+
+    with http_fixture(monkeypatch,behavior) as calls:
+        monkeypatch.setattr(rt.http.client.HTTPResponse,"read",read)
+        worker = threading.Thread(target=client,daemon=True)
+        worker.start()
+        try:
+            assert reading_body.wait(budget), "client never reached the held HTTP body"
+            assert client_finished.wait(budget + 2), "global deadline did not stop the client"
+            assert not release_body.is_set() and not expired_fixture
+            if "error" in outcome:
+                raise outcome["error"]
+            result = outcome["result"]
+            assert result["status"] == "timeout"
+            assert [c[1] for c in calls] == ["/api/version","/api/tags","/api/generate"]
+            assert [a["status"] for a in result["attempts"]] == ["timeout","not_attempted","not_attempted"]
+            assert "private synthetic detail" not in json.dumps(result)
+            assert result["budget_s"] == budget and result["elapsed_s"] < budget + 2
+        finally:
+            release_body.set()
+            worker.join(timeout=2)
+            assert not worker.is_alive(), "client did not stop after fixture release"
+            if reading_body.is_set():
+                assert handler_finished.wait(2)
 
 
 def test_successful_first_sample_preserved_after_second_unknown(monkeypatch,tmp_path):

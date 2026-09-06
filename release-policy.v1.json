@@ -7,6 +7,9 @@
   "proposed_tag": "v0.2.0",
   "state": "PREPARED",
   "publish_enabled": false,
+  "release_authorized": false,
+  "consumer_mutation_authorized": false,
+  "archive_authorized": false,
   "rollback_version": "0.1.0",
   "requires": [
     "multi_os_runtime_ci",
