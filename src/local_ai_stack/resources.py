@@ -160,14 +160,16 @@ def cpu_delta(first, second, platform):
 def sample_cpu(platform, sample_ms, deadline):
     reader = windows_cpu if platform == "win32" else lambda: linux_cpu(_proc("stat"))
     remaining(deadline)
-    first_start = time.monotonic()
+    # Measure short sample intervals with the high-resolution monotonic
+    # counter; remaining() continues to use the shared deadline clock.
+    first_start = time.perf_counter()
     first = reader()
     remaining(deadline)
     if remaining(deadline) < sample_ms / 1000:
         raise TimeoutError("insufficient CPU sample budget")
     time.sleep(sample_ms / 1000)
     remaining(deadline)
-    second_start = time.monotonic()
+    second_start = time.perf_counter()
     second = reader()
     remaining(deadline)
     interval = second_start - first_start

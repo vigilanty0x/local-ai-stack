@@ -35,6 +35,43 @@ def fixture_system(monkeypatch):
                         "MemTotal: 4096 kB\nMemAvailable: 1024 kB\n")
 
 
+def test_cpu_sample_counter_keeps_exact_interval_with_coarse_deadline_clock(monkeypatch):
+    from types import SimpleNamespace
+    fixture_system(monkeypatch)
+    counter = iter((200.0,200.05))
+    sleeps = []
+    clock = SimpleNamespace(monotonic=lambda:100.0,perf_counter=lambda:next(counter),sleep=sleeps.append)
+    monkeypatch.setattr(res,"time",clock)
+    monkeypatch.setattr(rt,"time",clock)
+    result = res.sample_cpu("linux",50,105.0)
+    assert sleeps == [.05] and result["status"] == "measured"
+    assert result["values"]["interval_s"] == pytest.approx(.05)
+    assert result["values"]["busy_percent"] == 50
+
+
+@pytest.mark.parametrize("counter", [(200.0,200.0),(200.0,199.0)])
+def test_cpu_sample_invalid_counter_interval_is_refused(monkeypatch,counter):
+    from types import SimpleNamespace
+    fixture_system(monkeypatch)
+    readings = iter(counter)
+    clock = SimpleNamespace(monotonic=lambda:100.0,perf_counter=lambda:next(readings),sleep=lambda seconds:None)
+    monkeypatch.setattr(res,"time",clock)
+    monkeypatch.setattr(rt,"time",clock)
+    with pytest.raises(rt.RuntimeErrorDetail,match="CPU interval invalid"):
+        res.sample_cpu("linux",50,105.0)
+
+
+def test_cpu_sample_insufficient_budget_does_not_sleep(monkeypatch):
+    from types import SimpleNamespace
+    fixture_system(monkeypatch)
+    clock = SimpleNamespace(monotonic=lambda:100.0,perf_counter=lambda:200.0,
+                            sleep=lambda seconds:pytest.fail("no sample after budget refusal"))
+    monkeypatch.setattr(res,"time",clock)
+    monkeypatch.setattr(rt,"time",clock)
+    with pytest.raises(TimeoutError,match="insufficient CPU sample budget"):
+        res.sample_cpu("linux",50,100.02)
+
+
 def test_observe_public_pipeline_partial_without_gpu(monkeypatch):
     fixture_system(monkeypatch)
     calls = []

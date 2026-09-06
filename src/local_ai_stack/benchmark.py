@@ -80,10 +80,13 @@ def benchmark(*, base, model, repetitions=1, timeout=60.0, max_tokens=64,
             for active in result["attempts"]:
                 remaining(deadline)
                 active.update(status="started", started_at=utc_now())
-                attempt_start = time.monotonic()
+                # On older Windows Python, monotonic can be a coarse tick
+                # clock. Keep it for the shared deadline, and use the monotonic
+                # performance counter for short measured intervals.
+                attempt_start = time.perf_counter()
                 try:
                     generated = _generate(base, model, PROMPT, max_tokens, deadline, transport)
-                    elapsed = time.monotonic() - attempt_start
+                    elapsed = time.perf_counter() - attempt_start
                     response = _validated_generation(model, PROMPT, max_tokens, generated)
                     remaining(deadline)
                     active.update(status="completed", model_observed=model,
@@ -101,7 +104,7 @@ def benchmark(*, base, model, repetitions=1, timeout=60.0, max_tokens=64,
                     active["error_code"] = type(exc).__name__
                     raise
                 finally:
-                    active.update(ended_at=utc_now(), elapsed_s=time.monotonic() - attempt_start)
+                    active.update(ended_at=utc_now(), elapsed_s=time.perf_counter() - attempt_start)
         remaining(deadline)
         result.update(status="completed", model_observed=model)
     except Exception as exc:

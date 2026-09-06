@@ -33,6 +33,50 @@ def execute(tmp_path, **kwargs):
     return bm.benchmark(base=BASE,model=MODEL,repetitions=3,lock_path=tmp_path/"lock",**kwargs)
 
 
+def timing_clock(monkeypatch):
+    from local_ai_stack import measurements
+    class Clock:
+        budget = 100.0
+        counter = 1000.0
+        def monotonic(self): return self.budget
+        def perf_counter(self):
+            self.counter += .001
+            return self.counter
+        def sleep(self, seconds):
+            self.budget += seconds
+            self.counter += seconds
+        def time(self): return self.budget
+    clock = Clock()
+    for module in (bm, rt, coordination, measurements):
+        monkeypatch.setattr(module, "time", clock)
+    return clock
+
+
+def test_short_samples_use_counter_without_changing_deadline(monkeypatch,tmp_path):
+    clock = timing_clock(monkeypatch)
+    calls = []
+    result = execute(tmp_path,transport=request_fixture(calls))
+    assert result["status"] == "completed" and result["measured_attempts"] == 3
+    assert clock.monotonic() == 100.0
+    assert {call["deadline"] for call in calls} == {160.0}
+    assert [a["client_elapsed_s"] for a in result["attempts"]] == pytest.approx([.001] * 3)
+    assert result["aggregates"]["server_tokens_per_second_median"] == 40
+
+
+@pytest.mark.parametrize("ticks", [(2.0,2.0,2.0),(2.0,1.0,1.0)])
+def test_invalid_counter_interval_stops_without_inventing_measurement(monkeypatch,tmp_path,ticks):
+    clock = timing_clock(monkeypatch)
+    readings = iter(ticks)
+    clock.perf_counter = lambda: next(readings)
+    calls = []
+    result = execute(tmp_path,transport=request_fixture(calls))
+    assert result["status"] == "blocked" and result["measured_attempts"] == 0
+    assert result["attempts"][0]["status"] == "completed"
+    assert "metrics" not in result["attempts"][0]
+    assert [a["status"] for a in result["attempts"]][1:] == ["not_attempted"] * 2
+    assert result["aggregates"] is None and len(calls) == 3
+
+
 def test_three_real_http_generations_under_one_native_lock(monkeypatch,tmp_path):
     with http_fixture(monkeypatch,lambda server,payload:server.respond(200,generated())) as calls:
         result = execute(tmp_path)
@@ -112,17 +156,31 @@ def test_invalid_metrics_or_tokens_stop_without_losing_completed_truth(changes,t
         assert result["attempts"][0]["status"] == "completed"
 
 
-def test_model_absent_and_budget_before_next_attempt(tmp_path):
+def test_model_absent_and_budget_before_next_attempt(monkeypatch,tmp_path):
+    clock = timing_clock(monkeypatch)
     calls=[]
     result=execute(tmp_path,transport=request_fixture(calls,models=()))
     assert result["status"] == "blocked" and len(calls) == 2
     calls=[]
     def generate(payload):
-        time.sleep(.03)
+        clock.sleep(.03)
         return generated()
     result=execute(tmp_path,timeout=.02,transport=request_fixture(calls,generate))
     assert result["status"] == "timeout" and len(calls) == 3
     assert result["attempts"][1]["status"] == "not_attempted"
+
+
+def test_budget_expiring_during_inventory_never_generates(monkeypatch,tmp_path):
+    clock = timing_clock(monkeypatch)
+    calls = []
+    request = request_fixture(calls)
+    def transport(base, method, path, payload, deadline):
+        response = request(base, method, path, payload, deadline)
+        if path == "/api/tags": clock.sleep(.03)
+        return response
+    result = execute(tmp_path,timeout=.02,transport=transport)
+    assert result["status"] == "timeout" and len(calls) == 2
+    assert all(a["status"] == "not_attempted" for a in result["attempts"])
 
 
 def test_real_child_native_lock_blocks_all_generation(tmp_path):

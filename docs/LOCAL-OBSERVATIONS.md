@@ -51,7 +51,12 @@ All four sections are requested: `cpu`, `ram`, `gpu`, `ollama`. Each has
 The overall status is `measured` only when all four sections were measured,
 otherwise `partial` or `not_measured`. Overall `health=not_inferred`: a complete
 measurement is not automatically a healthy machine. Date fields are UTC
-observations of this process; elapsed intervals use the monotonic clock.
+observations of this process; elapsed intervals use monotonic clocks. Short CPU
+sample and generation intervals use `time.perf_counter()` for its higher
+resolution on older Windows Python versions. Deadlines retain the shared
+`time.monotonic()` clock; these two reference points are never subtracted from
+each other. A zero or regressing measured interval is refused, never replaced
+with an invented positive duration.
 
 | Section | Method and values | Scope and limits |
 | --- | --- | --- |
