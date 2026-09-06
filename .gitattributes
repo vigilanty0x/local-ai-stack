@@ -1,0 +1,2 @@
+# Historical parity oracles are SHA-256 pinned as exact LF bytes.
+tests/fixtures/service_doctor_core.py text eol=lf
