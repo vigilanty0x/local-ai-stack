@@ -1,5 +1,55 @@
 # Local AI Stack
 
+`observe` collects a bounded CPU/RAM/GPU/Ollama snapshot. `benchmark` explicitly
+runs one to three small generations of a fixed synthetic prompt through the
+existing model and inference lock. Missing measurements stay unknown; client
+elapsed time and server-reported metrics remain distinct. GPU collection is
+optional and requires a trusted existing executable selected by the operator.
+See [Local observations and benchmark](docs/LOCAL-OBSERVATIONS.md). These
+operations do not prove Docker health, port ownership or model quality.
+
+`infer --fallback policy.json` optionally tries up to four explicitly ordered
+local models under the same inference lock and total deadline. Each model must
+appear in the observed inventory; only a complete terminal HTTP rejection can
+permit the next candidate. Timeouts, broken connections and model mismatches
+stop the chain. See [Local fallback](docs/LOCAL-FALLBACK.md). No circuit state,
+model download or remote provider has been added.
+
+## Integrated local runtime workflow (working-tree candidate)
+
+The `doctor` and `infer` commands interrogate an existing Ollama runtime. They
+do not install software or download models. The historical `record.json`
+evaluator below remains compatible and validates supplied observations only.
+
+```bash
+local-ai-stack doctor --model qwen2.5:3b
+local-ai-stack infer --model qwen2.5:3b --prompt "Reply with exactly OK." --max-tokens 8 --timeout 45 --lock /path/to/shared/ollama.lock
+```
+
+The same workflow checks the runtime version, obtains its inventory, requires
+the exact installed model tag, acquires the configured OS inference lock, and
+validates a complete generation from that model. `doctor` returns `available`
+with `inference_readiness=not_measured`; only a finished generation returns
+`completed`. Output includes actual elapsed time, token count and content
+digests. A refusal returns no fabricated answer. Exit 0 means the requested
+operation succeeded; exit 2 means blocked, timed out or invalid.
+
+`CC_OLLAMA_BASE` or `--base` selects a local endpoint on port 11434. Only
+loopback and the explicitly named Docker service `ollama` are accepted. The
+transport pins an allowed resolved IP, ignores proxies, follows no redirects,
+bounds JSON/body size, and shares one deadline across all stages. DNS and HTTP
+also have deadline watchdogs. Remote provider APIs are unsupported.
+
+Every process sharing a model must use **the same lock file/inode** through
+`OLLAMA_INFERENCE_LOCK` or `--lock`; a Windows path and an unrelated Linux
+volume are not interchangeable. Without an explicit path the private lock is
+under `LOCAL_AI_STATE_ROOT` (default `.local-ai`). Private locks are created
+with restrictive POSIX mode and existing permissions are never repaired.
+The optional pre-provisioned shared-lock mode preserves stricter ownership
+checks. See [runtime contract](docs/RUNTIME-WORKFLOW.md).
+
+This working-tree addition is not a published version or an installed service.
+
 Local AI Stack is a dependency-free, deterministic fail-closed readiness evaluator for local inference runtimes and models. It turns a bounded JSON observation into explicit `passed`, `failed`, or `blocked` evidence with a SHA-256 identifier instead of inferring that a local model is ready from process liveness alone.
 
 **0.2.0 is PREPARED, not published.** `release-policy.v1.json` keeps publication disabled. See [Migration to 0.2](MIGRATION-0.2.md) and [Release contract](docs/RELEASE.md).
