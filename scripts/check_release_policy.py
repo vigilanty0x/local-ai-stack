@@ -65,6 +65,7 @@ def validate_release_policy(root: Path = ROOT) -> dict:
         raise ReleasePolicyError("release policy requires must be a unique complete gate list")
     for gate in (
         "multi_os_runtime_ci",
+        "imported_package_ci",
         "wheel_and_sdist",
         "installed_artifact_smoke",
         "positive_and_counterproof",
@@ -88,9 +89,34 @@ def validate_release_policy(root: Path = ROOT) -> dict:
     sources = rehearsal.get("sources")
     if not isinstance(sources, list) or len(sources) != 3:
         raise ReleasePolicyError("portfolio rehearsal must retain all three imported sources")
+    expected_packages: list[str] = []
     for source in sources:
         if not isinstance(source, dict) or source.get("ancestor") is not True or source.get("treeMatch") is not True:
             raise ReleasePolicyError("every imported source must retain ancestor/treeMatch proof")
+        repository = source.get("repository")
+        if not isinstance(repository, str) or source.get("prefix") != f"packages/{repository}":
+            raise ReleasePolicyError("every imported source must identify its package prefix")
+        expected_packages.append(repository)
+
+    package_start = "\n  packages:\n"
+    attest_start = "\n  attest-candidate:\n"
+    if package_start not in workflow or attest_start not in workflow:
+        raise ReleasePolicyError("CI must contain packages and attest-candidate jobs")
+    package_workflow = workflow.split(package_start, 1)[1].split(attest_start, 1)[0]
+    for repository in expected_packages:
+        if f"          - {repository}\n" not in package_workflow:
+            raise ReleasePolicyError(f"package CI is missing imported package {repository}")
+    for marker in (
+        'python-version: ["3.11", "3.12"]',
+        "working-directory: packages/${{ matrix.package }}",
+        "python -m pip wheel . --no-deps --no-build-isolation --wheel-dir dist",
+        "python -m unittest discover -s tests -v",
+        "python scripts/check.py",
+    ):
+        if marker not in package_workflow:
+            raise ReleasePolicyError(f"package CI is missing required control {marker!r}")
+    if "needs: [test, packages]" not in workflow:
+        raise ReleasePolicyError("candidate attestation must wait for root and imported package CI")
 
     if 'python-version: ["3.11", "3.12", "3.13", "3.14"]' not in workflow:
         raise ReleasePolicyError("CI must explicitly test Python 3.11 through 3.14")

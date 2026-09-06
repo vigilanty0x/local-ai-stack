@@ -16,7 +16,7 @@ Normal 0.2 PR CI can establish PREPARED and ATTESTED evidence. Because `release-
 
 ## Pre-publication proof
 
-The candidate must pass the complete 3 OS × 3 Python matrix, wheel and sdist verification, installed CLI smoke, positive/negative/blocked evidence semantics, static boundary checks, release policy checks, SHA-256 generation, CycloneDX 1.6 SBOM generation, and strict signed provenance verification.
+The candidate must pass the complete 3 OS × 4 Python root matrix and the 3 package × 2 Python imported-package matrix, wheel and sdist verification, installed CLI smoke, positive/negative/blocked evidence semantics, static boundary checks, release policy checks, SHA-256 generation, CycloneDX 1.6 SBOM generation, and strict signed provenance verification. Candidate attestation waits for both matrices.
 
 ## Publication
 

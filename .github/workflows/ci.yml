@@ -83,8 +83,41 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+  packages:
+    name: ${{ matrix.package }} / Python ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        package:
+          - local-model-benchmark
+          - model-fallback-proxy
+          - ollama-fleet-manager
+        python-version: ["3.11", "3.12"]
+    defaults:
+      run:
+        working-directory: packages/${{ matrix.package }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install pinned build toolchain
+        run: python -m pip install --disable-pip-version-check --upgrade -r ../../requirements-build.txt
+      - name: Build package wheel
+        run: python -m pip wheel . --no-deps --no-build-isolation --wheel-dir dist
+      - name: Install built package wheel
+        run: python -c "import glob,subprocess,sys; wheels=glob.glob('dist/*.whl'); assert len(wheels)==1, wheels; subprocess.check_call([sys.executable,'-m','pip','install','--no-deps','--force-reinstall',wheels[0]])"
+      - name: Unit tests against installed package
+        run: python -m unittest discover -s tests -v
+      - name: Package repository checks
+        run: python scripts/check.py
+
   attest-candidate:
-    needs: [test]
+    needs: [test, packages]
     if: ${{ (github.event_name == 'push' && github.ref == 'refs/heads/main' && github.actor == github.repository_owner) || (github.event_name == 'pull_request' && github.actor == github.repository_owner && github.event.pull_request.head.repo.full_name == github.repository) }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
