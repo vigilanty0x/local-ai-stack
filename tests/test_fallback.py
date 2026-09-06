@@ -135,12 +135,64 @@ def test_real_uncertain_or_unauthorized_response_aborts(monkeypatch,tmp_path,cas
 
 
 def test_real_body_timeout_never_starts_another_inference(monkeypatch,tmp_path):
-    with http_fixture(monkeypatch,lambda s,p:s.respond(503,{'error':'synthetic'},delay=.3)) as calls:
-        result=execute(tmp_path,timeout=.08)
-    assert result['status']=='timeout' and result['response'] is None
-    assert len([c for c in calls if c[0]=='POST'])==1
-    assert result['attempts'][1]['status']=='not_attempted'
-    assert result['elapsed_s']<.4
+    # The deadline also includes inventory and the OS lock. An 80ms budget
+    # could expire before any POST on Windows, testing the wrong phase.
+    # Hold the actual HTTP body until the real client has timed out; do not
+    # simulate a transport error or count zero requests as a valid outcome.
+    budget=5.0
+    reading_body=threading.Event();release_body=threading.Event()
+    handler_finished=threading.Event();client_finished=threading.Event()
+    outcome={};expired_fixture=[];timers=[]
+    native_read=rt.http.client.HTTPResponse.read
+    native_timer=threading.Timer
+    def read(response,*args,**kwargs):
+        if response.status==503:reading_body.set()
+        return native_read(response,*args,**kwargs)
+    def timer(*args,**kwargs):
+        value=native_timer(*args,**kwargs);timers.append(value);return value
+    def behavior(server,payload):
+        body=json.dumps({'error':'synthetic'}).encode()
+        server.send_response(503)
+        server.send_header('Content-Length',str(len(body)))
+        server.send_header('Connection','close')
+        server.end_headers();server.wfile.flush()
+        try:
+            if not release_body.wait(budget+4):expired_fixture.append(True)
+            try:server.wfile.write(body);server.wfile.flush()
+            except (BrokenPipeError,ConnectionResetError):pass
+        finally:
+            server.close_connection=True;handler_finished.set()
+    def client():
+        try:outcome['result']=execute(tmp_path,timeout=budget)
+        except BaseException as exc:outcome['error']=exc
+        finally:client_finished.set()
+    with http_fixture(monkeypatch,behavior) as calls:
+        monkeypatch.setattr(rt.http.client.HTTPResponse,'read',read)
+        monkeypatch.setattr(rt.threading,'Timer',timer)
+        worker=threading.Thread(target=client,daemon=True);worker.start()
+        try:
+            assert reading_body.wait(budget), 'client never reached the held HTTP body'
+            assert client_finished.wait(budget+2), 'global deadline did not stop the client'
+            assert not release_body.is_set() and not expired_fixture
+            if 'error' in outcome:raise outcome['error']
+            result=outcome['result']
+            assert result['status']=='timeout' and result['response'] is None
+            assert result['inference_completed'] is False
+            assert [c[2]['model'] for c in calls if c[0]=='POST']==['first:1']
+            assert [c[1] for c in calls]==['/api/version','/api/tags','/api/generate']
+            assert len(timers)==3
+            assert result['attempts'][0]['generation_attempted'] is True
+            assert result['attempts'][0]['status']=='timeout'
+            assert result['attempts'][1]['status']=='not_attempted'
+            assert result['attempts'][1]['generation_attempted'] is False
+            assert result['budget_s']==budget and result['elapsed_s']<budget+2
+        finally:
+            release_body.set();worker.join(timeout=2)
+            assert not worker.is_alive(), 'client did not stop after fixture release'
+            if reading_body.is_set():assert handler_finished.wait(2)
+            for value in timers:
+                value.join(timeout=1)
+                assert value.finished.is_set() and not value.is_alive()
 
 
 def test_real_closed_connection_never_retries(monkeypatch,tmp_path):

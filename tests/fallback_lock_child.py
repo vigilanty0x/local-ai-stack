@@ -1,6 +1,6 @@
 """Standalone synthetic lock holder; no application import before its guard."""
 from pathlib import Path
-import hashlib,json,os,sys,time
+import json, os, sys, time
 
 assert sys.flags.isolated and sys.flags.no_site and sys.flags.dont_write_bytecode
 source=Path(sys.argv[1]).resolve();root=Path(sys.argv[2]).resolve()
