@@ -1,6 +1,6 @@
 """Runtime workflow counterproofs with synthetic transport and isolated state."""
 import json
-import socket
+
 import threading
 import types
 

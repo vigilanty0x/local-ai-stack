@@ -109,6 +109,7 @@ def __getattr__(name):
 
 def _kernel():
     _load_windows_types()
+    ctypes, FileTime, MemoryStatus = (globals()[name] for name in ('ctypes', 'FileTime', 'MemoryStatus'))
     # Restricted system-library search; no caller-selected DLL or PATH lookup.
     kernel = ctypes.WinDLL("kernel32.dll", use_last_error=True, winmode=0x800)
     kernel.GetSystemTimes.argtypes = [ctypes.POINTER(FileTime)] * 3
@@ -120,6 +121,7 @@ def _kernel():
 
 def windows_cpu():
     _load_windows_types()
+    ctypes, FileTime = (globals()[name] for name in ('ctypes', 'FileTime'))
     idle, kernel, user = FileTime(), FileTime(), FileTime()
     if not _kernel().GetSystemTimes(ctypes.byref(idle), ctypes.byref(kernel), ctypes.byref(user)):
         raise OSError("CPU API failed")
@@ -128,6 +130,7 @@ def windows_cpu():
 
 def windows_memory():
     _load_windows_types()
+    ctypes, MemoryStatus = (globals()[name] for name in ('ctypes', 'MemoryStatus'))
     memory = MemoryStatus()
     memory.length = ctypes.sizeof(memory)
     if not _kernel().GlobalMemoryStatusEx(ctypes.byref(memory)):
@@ -214,6 +217,7 @@ def _program_files_path(value):
 
 def _windows_program_files():
     _load_windows_types()
+    ctypes, _Guid = (globals()[name] for name in ('ctypes', '_Guid'))
     # FOLDERID_ProgramFiles, Microsoft Knownfolders.h. Never inherit an app path.
     folder = _Guid(0x905e63b6, 0xc1bf, 0x494e,
                    (ctypes.c_ubyte * 8)(0xb2, 0x9c, 0x65, 0xb7, 0x32, 0xd3, 0xd2, 0x1a))
