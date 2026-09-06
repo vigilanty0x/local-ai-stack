@@ -1,10 +1,15 @@
 # Changelog
 
+## Unreleased
+
+- Build and test every imported package on CPython 3.11 and 3.12 in hosted CI, including each package's own unit suite and repository checks.
+- Require the imported-package matrix to pass before candidate attestation can run.
+
 ## 0.2.0 - 2026-08-18
 
 - Preserve the existing `local-ai-stack` product, distribution, Python namespace and CLI identity while hardening it as an A03 flagship candidate.
 - Pin the release build toolchain and test wheel plus source distribution as installed artifacts.
-- Expand CI to Ubuntu, Windows and macOS across CPython 3.11, 3.12 and 3.13.
+- Expand CI to Ubuntu, Windows and macOS across CPython 3.11 through 3.14.
 - Preserve explicit positive, failed and blocked readiness evidence as the functional proof/counter-proof contract.
 - Add SHA-256 release checksums, CycloneDX 1.6 SBOM, prepared-state evidence, and verified GitHub/Sigstore SLSA provenance.
 - Add explicit publication-disable policy, migration, rollback, post-publication verification requirements and archive blockers.

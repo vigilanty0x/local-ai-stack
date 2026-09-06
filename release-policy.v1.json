@@ -13,6 +13,7 @@
   "rollback_version": "0.1.0",
   "requires": [
     "multi_os_runtime_ci",
+    "imported_package_ci",
     "wheel_and_sdist",
     "installed_artifact_smoke",
     "positive_and_counterproof",

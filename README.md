@@ -90,7 +90,7 @@ Consolidation is not archive authorization. Those source repositories remain sub
 
 ## Release-quality evidence
 
-Flagship CI runs Ubuntu, Windows and macOS on CPython 3.11, 3.12 and 3.13. Every matrix job:
+Flagship CI runs the root product on Ubuntu, Windows and macOS across CPython 3.11 through 3.14. A separate Ubuntu matrix builds the wheel and runs the unit suite plus repository checks for each of the three imported packages on its supported CPython 3.11 and 3.12 versions. Every root matrix job:
 
 - installs an exact pinned build toolchain;
 - builds wheel + source distribution;
@@ -101,7 +101,7 @@ Flagship CI runs Ubuntu, Windows and macOS on CPython 3.11, 3.12 and 3.13. Every
 - verifies publication remains disabled;
 - generates SHA-256 checksums, CycloneDX 1.6 SBOM, and `RELEASE_EVIDENCE.json` whose state remains `PREPARED` with release booleans false.
 
-After the nine jobs, a guarded owner/same-repository job signs the canonical Ubuntu/Python 3.11 wheel with GitHub/Sigstore SLSA provenance and then independently verifies it with `gh attestation verify` constrained by repository, signer workflow, source ref, source digest and GitHub-hosted runner policy.
+After all twelve root jobs and all six imported-package jobs pass, a guarded owner/same-repository job signs the canonical Ubuntu/Python 3.11 wheel with GitHub/Sigstore SLSA provenance and then independently verifies it with `gh attestation verify` constrained by repository, signer workflow, source ref, source digest and GitHub-hosted runner policy.
 
 Attestation is evidence, not publication permission. Normal 0.2 CI contains no tag, GitHub Release or package-publish step.
 
@@ -118,4 +118,4 @@ python -m compileall -q src tests scripts
 
 0.2 changes release engineering and package verification, not persistent state. Rollback returns to the verified 0.1.0 artifact/commit and preserves the same product/distribution/namespace/CLI identity.
 
-Apache-2.0. Python 3.11+; CI-tested through 3.13. Zero runtime dependencies.
+Apache-2.0. Python 3.11+; the root product is CI-tested through 3.14. Zero runtime dependencies.
