@@ -1,3 +1,4 @@
+include .gitattributes
 include .github/workflows/ci.yml
 include CHANGELOG.md
 include LICENSE
@@ -9,3 +10,77 @@ include requirements-build.txt
 recursive-include docs *.md
 recursive-include scripts *.py
 recursive-include tests *.py
+include requirements-test.lock
+recursive-include tests/fixtures *.json *LICENSE
+
+# Explicit public source selection; preserves parity fixtures and historical packages.
+include .gitignore
+include .portfolio-rehearsal.json
+include docs/LOCAL-FALLBACK.md
+include docs/LOCAL-OBSERVATIONS.md
+include docs/RELEASE.md
+include docs/RUNTIME-WORKFLOW.md
+include packages/local-model-benchmark/.github/workflows/ci.yml
+include packages/local-model-benchmark/.gitignore
+include packages/local-model-benchmark/LICENSE
+include packages/local-model-benchmark/README.md
+include packages/local-model-benchmark/SECURITY.md
+include packages/local-model-benchmark/pyproject.toml
+include packages/local-model-benchmark/scripts/check.py
+include packages/local-model-benchmark/src/local_model_benchmark/__init__.py
+include packages/local-model-benchmark/src/local_model_benchmark/cli.py
+include packages/local-model-benchmark/src/local_model_benchmark/core.py
+include packages/local-model-benchmark/tests/test_core.py
+include packages/model-fallback-proxy/.github/workflows/ci.yml
+include packages/model-fallback-proxy/.gitignore
+include packages/model-fallback-proxy/AI_ASSISTANCE.md
+include packages/model-fallback-proxy/LICENSE
+include packages/model-fallback-proxy/README.md
+include packages/model-fallback-proxy/SECURITY.md
+include packages/model-fallback-proxy/examples/basic.json
+include packages/model-fallback-proxy/pyproject.toml
+include packages/model-fallback-proxy/scripts/check.py
+include packages/model-fallback-proxy/src/model_fallback_proxy/__init__.py
+include packages/model-fallback-proxy/src/model_fallback_proxy/__main__.py
+include packages/model-fallback-proxy/tests/test_core.py
+include packages/ollama-fleet-manager/.github/workflows/ci.yml
+include packages/ollama-fleet-manager/.gitignore
+include packages/ollama-fleet-manager/LICENSE
+include packages/ollama-fleet-manager/README.md
+include packages/ollama-fleet-manager/SECURITY.md
+include packages/ollama-fleet-manager/pyproject.toml
+include packages/ollama-fleet-manager/scripts/check.py
+include packages/ollama-fleet-manager/src/ollama_fleet_manager/__init__.py
+include packages/ollama-fleet-manager/src/ollama_fleet_manager/cli.py
+include packages/ollama-fleet-manager/src/ollama_fleet_manager/core.py
+include packages/ollama-fleet-manager/tests/test_core.py
+include pyproject.toml
+include scripts/build_release_evidence.py
+include scripts/check.py
+include scripts/check_release_policy.py
+include scripts/verify_sdist.py
+include src/local_ai_stack/__init__.py
+include src/local_ai_stack/__main__.py
+include src/local_ai_stack/benchmark.py
+include src/local_ai_stack/cli.py
+include src/local_ai_stack/coordination.py
+include src/local_ai_stack/core.py
+include src/local_ai_stack/fallback.py
+include src/local_ai_stack/measurements.py
+include src/local_ai_stack/observations.py
+include src/local_ai_stack/resources.py
+include src/local_ai_stack/runtime.py
+include tests/fallback_lock_child.py
+include tests/fixtures/provenance.json
+include tests/fixtures/service-doctor-LICENSE
+include tests/fixtures/service_doctor_core.py
+include tests/gpu_fixture_child.py
+include tests/test_benchmark.py
+include tests/test_core.py
+include tests/test_fallback.py
+include tests/test_gpu_environment.py
+include tests/test_lazy_windows_types.py
+include tests/test_observations.py
+include tests/test_release_evidence.py
+include tests/test_release_policy.py
+include tests/test_runtime.py

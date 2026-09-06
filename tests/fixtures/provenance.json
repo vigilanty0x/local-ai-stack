@@ -1,0 +1,17 @@
+{
+  "schema": "historical-test-fixtures/1",
+  "scope": "exact rule-parity source, no additional runtime engine",
+  "fixtures": [
+    {
+      "path": "service_doctor_core.py",
+      "repository": "https://github.com/vigilanty0x/service-doctor",
+      "commit": "05be8b5b3d4e74267543bbcd156412212157d982",
+      "source_path": "src/service_doctor/core.py",
+      "sha256": "9a12b6a57528d5a78ed55c176aeed2a60b1fb8810a3cf1997620e465932721f5",
+      "git_blob_sha1": "f07cbb78a8d72e42831f2683e96a8882465dc132",
+      "license": "Apache-2.0",
+      "license_file": "service-doctor-LICENSE",
+      "license_sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+    }
+  ]
+}
