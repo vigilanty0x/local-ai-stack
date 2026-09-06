@@ -279,19 +279,47 @@ def test_untrusted_gpu_path_components_rejected(tmp_path,monkeypatch):
 
 def test_gpu_uncertain_cleanup_never_claims_process_ended(monkeypatch,tmp_path):
     import io
+    from types import SimpleNamespace
+
+    # This fixture exercises failed cleanup, not elapsed OS setup time. Keep
+    # the real shared-budget calculation, driven by one controlled clock.
+    now = [100.0]
+    sleeps = []
+    def advance(seconds):
+        assert 0 < seconds <= .01
+        sleeps.append(seconds)
+        assert len(sleeps) <= 300
+        now[0] += seconds
+    clock = SimpleNamespace(monotonic=lambda:now[0], sleep=advance)
+    monkeypatch.setattr(res,"time",clock)
+    monkeypatch.setattr(rt,"time",clock)
+    monkeypatch.setattr(res,"_windows_program_files",lambda:str(tmp_path))
     executable=tmp_path/"nvidia-smi.exe";executable.write_bytes(b"synthetic")
+    calls = []
     class Process:
         stdout=io.BytesIO(b"")
         stderr=io.BytesIO(b"")
         returncode=None
         def poll(self):return None
-        def kill(self):raise PermissionError("synthetic process cannot terminate")
-        def wait(self,timeout):raise subprocess.TimeoutExpired("synthetic",timeout)
+        def kill(self):
+            calls.append("kill")
+            raise PermissionError("synthetic process cannot terminate")
+        def wait(self,timeout):
+            assert 0 < timeout <= .5
+            calls.append("wait")
+            raise subprocess.TimeoutExpired("synthetic",timeout)
     process=Process()
-    monkeypatch.setattr(res.subprocess,"Popen",lambda *a,**kw:process)
-    result=res.gpu_process(executable,time.monotonic()+.51)
+    def popen(argv,**kwargs):
+        assert argv == [str(executable), *res.GPU_ARGS]
+        assert kwargs["shell"] is False and kwargs["stdin"] == subprocess.DEVNULL
+        calls.append("start")
+        return process
+    monkeypatch.setattr(res.subprocess,"Popen",popen)
+    result=res.gpu_process(executable,clock.monotonic()+1)
+    assert calls == ["start", "kill", "wait"] and sleeps
     assert result["error_code"]=="GPU_TERMINATION_UNCONFIRMED"
     assert result["status"]=="error" and result["process"]["process_termination_confirmed"] is False
+    assert result["values"] is None and result["process"]["captured_bytes"] == 0
     assert process.stdout.closed and process.stderr.closed
     assert "synthetic process cannot terminate" not in json.dumps(result)
 
